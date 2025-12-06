@@ -69,13 +69,70 @@ else
     git clone -b "$BRANCH" "$REPO_URL" .
 fi
 
-# Navigate to chatbot directory
-if [ ! -d "Prashiskshan_ml/chatbot" ]; then
+# Find chatbot directory (try multiple possible paths)
+CHATBOT_DIR=""
+
+# First, check if current directory has the required files
+if [ -f "docker-compose.yml" ] && [ -f "chatbot_service_sse.py" ]; then
+    CHATBOT_DIR="."
+    print_info "Found chatbot files in current directory"
+else
+    # Try common subdirectory paths
+    POSSIBLE_PATHS=(
+        "Prashiskshan_ml/chatbot"
+        "chatbot"
+        "Prashiskshan_ML_chatbot"
+        "Prashiskshan_ML_chatbot/chatbot"
+        "Prashiskshan_ML_chatbot/Prashiskshan_ml/chatbot"
+    )
+
+    print_info "Looking for chatbot directory in subdirectories..."
+    for path in "${POSSIBLE_PATHS[@]}"; do
+        if [ -d "$path" ] && [ -f "$path/docker-compose.yml" ] && [ -f "$path/chatbot_service_sse.py" ]; then
+            CHATBOT_DIR="$path"
+            print_info "Found chatbot directory at: $path"
+            break
+        fi
+    done
+
+    # If not found, try to find any directory with docker-compose.yml and chatbot_service_sse.py
+    if [ -z "$CHATBOT_DIR" ]; then
+        print_warn "Chatbot directory not found in common locations. Searching..."
+        CHATBOT_DIR=$(find . -name "docker-compose.yml" -type f -exec dirname {} \; | while read dir; do
+            if [ -f "$dir/chatbot_service_sse.py" ]; then
+                echo "$dir"
+                break
+            fi
+        done | head -1)
+        if [ -n "$CHATBOT_DIR" ]; then
+            print_info "Found chatbot directory at: $CHATBOT_DIR"
+        fi
+    fi
+fi
+
+# Final check
+if [ -z "$CHATBOT_DIR" ] || [ ! -f "$CHATBOT_DIR/docker-compose.yml" ]; then
     print_error "Chatbot directory not found. Please check the repository structure."
+    print_error "Looking for a directory containing docker-compose.yml and chatbot_service_sse.py"
+    print_error ""
+    print_error "Current directory: $(pwd)"
+    print_error "Current directory structure:"
+    ls -la | head -20
+    print_error ""
+    print_error "Searching for docker-compose.yml files..."
+    find . -name "docker-compose.yml" -type f 2>/dev/null | head -5
+    print_error ""
+    print_error "Searching for chatbot_service_sse.py files..."
+    find . -name "chatbot_service_sse.py" -type f 2>/dev/null | head -5
+    print_error ""
+    print_error "Please either:"
+    print_error "  1. Navigate to the chatbot directory manually and run: docker-compose up -d"
+    print_error "  2. Or update the script with the correct path"
     exit 1
 fi
 
-cd Prashiskshan_ml/chatbot
+cd "$CHATBOT_DIR"
+print_info "Working directory: $(pwd)"
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then
