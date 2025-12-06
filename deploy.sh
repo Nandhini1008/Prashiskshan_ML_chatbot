@@ -43,8 +43,15 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Check if Docker Compose is installed
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+# Check if Docker Compose is installed and determine which command to use
+DOCKER_COMPOSE_CMD=""
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+    print_info "Using docker-compose (v1)"
+elif docker compose version &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+    print_info "Using docker compose (v2)"
+else
     print_error "Docker Compose is not installed. Please install Docker Compose first."
     exit 1
 fi
@@ -126,7 +133,7 @@ if [ -z "$CHATBOT_DIR" ] || [ ! -f "$CHATBOT_DIR/docker-compose.yml" ]; then
     find . -name "chatbot_service_sse.py" -type f 2>/dev/null | head -5
     print_error ""
     print_error "Please either:"
-    print_error "  1. Navigate to the chatbot directory manually and run: docker-compose up -d"
+    print_error "  1. Navigate to the chatbot directory manually and run: $DOCKER_COMPOSE_CMD up -d"
     print_error "  2. Or update the script with the correct path"
     exit 1
 fi
@@ -168,16 +175,16 @@ fi
 
 # Stop existing containers
 print_info "Stopping existing containers..."
-docker-compose down || true
+$DOCKER_COMPOSE_CMD down || true
 
 # Build Docker image locally on EC2 (no Docker Hub needed)
 print_info "Building Docker image locally on EC2..."
 print_info "This may take a few minutes on first build..."
-docker-compose build --no-cache
+$DOCKER_COMPOSE_CMD build --no-cache
 
 # Start services
 print_info "Starting services..."
-docker-compose up -d
+$DOCKER_COMPOSE_CMD up -d
 
 # Wait for service to be healthy
 print_info "Waiting for service to be healthy..."
@@ -197,7 +204,7 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 done
 
 if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    print_error "Service failed to become healthy. Check logs with: docker-compose logs"
+    print_error "Service failed to become healthy. Check logs with: $DOCKER_COMPOSE_CMD logs"
     exit 1
 fi
 
@@ -217,12 +224,12 @@ echo "  - Qdrant (Vector DB): Port 6333"
 echo "  - Redis: External (Backend)"
 echo ""
 echo "Useful commands:"
-echo "  View logs:        docker-compose logs -f"
-echo "  View chatbot logs: docker-compose logs -f chatbot"
-echo "  View Qdrant logs:  docker-compose logs -f qdrant"
-echo "  Stop service:     docker-compose down"
-echo "  Restart:          docker-compose restart"
-echo "  Status:           docker-compose ps"
+echo "  View logs:        $DOCKER_COMPOSE_CMD logs -f"
+echo "  View chatbot logs: $DOCKER_COMPOSE_CMD logs -f chatbot"
+echo "  View Qdrant logs:  $DOCKER_COMPOSE_CMD logs -f qdrant"
+echo "  Stop service:     $DOCKER_COMPOSE_CMD down"
+echo "  Restart:          $DOCKER_COMPOSE_CMD restart"
+echo "  Status:           $DOCKER_COMPOSE_CMD ps"
 echo ""
 echo "Qdrant Management:"
 echo "  Qdrant Dashboard: http://${EC2_IP}:6333/dashboard"
