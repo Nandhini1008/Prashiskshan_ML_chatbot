@@ -58,7 +58,7 @@ services:
       - QDRANT__SERVICE__HTTP_PORT=6333
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
       interval: 10s
       timeout: 3s
       retries: 3
