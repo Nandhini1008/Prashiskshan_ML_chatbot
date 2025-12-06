@@ -33,7 +33,7 @@ services:
       - ./logs:/app/logs
     depends_on:
       qdrant:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
