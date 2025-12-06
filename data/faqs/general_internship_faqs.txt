@@ -1,0 +1,23 @@
+Q: How do I apply for an internship?
+A: To apply for an internship, visit the company's career website, create an account, and submit your application with your resume, cover letter, and any required documents. Make sure to tailor your application to the specific role and highlight relevant skills and experiences.
+
+Q: What is the typical duration of an internship?
+A: Most internships last between 8-12 weeks during the summer. However, some companies also offer semester-long internships (3-4 months) or year-round internship opportunities.
+
+Q: Do internships provide stipends?
+A: Yes, most reputable companies provide competitive stipends for their interns. The amount varies based on the company, location, and role. Tech companies typically offer higher stipends ranging from $5,000 to $10,000 per month.
+
+Q: What should I include in my internship resume?
+A: Your internship resume should include: education details, relevant coursework, technical skills, projects (academic or personal), previous internships or work experience, leadership roles, and achievements. Keep it concise (1 page) and focus on quantifiable accomplishments.
+
+Q: How can I prepare for technical interviews?
+A: Practice coding problems on platforms like LeetCode, HackerRank, and CodeForces. Focus on data structures and algorithms. Review computer science fundamentals. Practice explaining your thought process clearly. Do mock interviews with peers or mentors.
+
+Q: What is the difference between an internship and a co-op?
+A: An internship is typically a short-term position (8-12 weeks) during summer breaks. A co-op is a longer-term program (3-6 months or more) that may alternate with academic semesters and is often more integrated with your academic curriculum.
+
+Q: Can international students apply for internships?
+A: Yes, many companies hire international students for internships. However, you'll need proper work authorization (like CPT for students in the US). Check the specific requirements for each company and country.
+
+Q: When should I start applying for summer internships?
+A: Start applying in early fall (September-October) for the following summer. Many top tech companies have early deadlines. Some companies accept applications on a rolling basis, so applying early increases your chances.

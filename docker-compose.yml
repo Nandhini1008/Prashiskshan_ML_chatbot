@@ -1,0 +1,75 @@
+version: "3.9"
+
+# Production Docker Compose for EC2 Deployment
+# - Self-hosted Qdrant for vector storage
+# - External Redis (backend Redis) for conversation storage
+# - Nginx for SSE streaming support
+
+services:
+  chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chatbot-service
+    ports:
+      - "80:80"      # Nginx port (external access)
+      - "5001:5001"  # Direct Flask access (optional, for debugging)
+    env_file:
+      - .env
+    environment:
+      - CHATBOT_SERVICE_PORT=5001
+      - CHATBOT_SERVICE_HOST=0.0.0.0
+      - PYTHONUNBUFFERED=1
+      # Qdrant configuration (self-hosted)
+      - QDRANT_URL=http://qdrant:6333
+      # Redis configuration (external backend Redis)
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    volumes:
+      # Mount data directory for persistence
+      - ./data:/app/data
+      # Mount logs directory
+      - ./logs:/app/logs
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - chatbot-network
+
+  # Self-hosted Qdrant for vector storage
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: chatbot-qdrant
+    ports:
+      - "6333:6333"  # HTTP API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__SERVICE__HTTP_PORT=6333
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    networks:
+      - chatbot-network
+
+networks:
+  chatbot-network:
+    driver: bridge
+
+volumes:
+  qdrant_storage:
+    driver: local

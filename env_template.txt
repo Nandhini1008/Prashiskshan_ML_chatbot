@@ -1,0 +1,27 @@
+# ============================================
+# Chatbot Service Environment Configuration
+# Production EC2 Deployment
+# ============================================
+
+# API Keys
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Qdrant Configuration (Self-hosted on EC2)
+# Qdrant runs in docker-compose, accessible via service name
+QDRANT_URL=http://qdrant:6333
+QDRANT_API_KEY=
+
+# Redis Configuration (External Backend Redis)
+# Connect to your backend Redis service
+# Update these with your backend Redis connection details
+REDIS_HOST=your-backend-redis-host-or-ip
+REDIS_PORT=6379
+REDIS_PASSWORD=your-redis-password-if-set
+
+# Service Configuration
+CHATBOT_SERVICE_PORT=5001
+CHATBOT_SERVICE_HOST=0.0.0.0
+
+# Backend API Configuration (if needed)
+# BACKEND_API_URL=http://your-backend-api-url:port
