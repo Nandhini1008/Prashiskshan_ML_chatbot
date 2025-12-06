@@ -23,11 +23,12 @@ This chatbot uses a **strict sequential pipeline** architecture with two distinc
 
 ## Technology Stack
 
-- **Vector Store**: ChromaDB with FAISS indexing
+- **Vector Store**: Qdrant (self-hosted)
 - **Embeddings**: sentence-transformers/all-MiniLM-L6-v2
-- **Primary LLM**: Meta LLaMA 3.3 Turbo (Together API)
+- **Primary LLM**: Meta LLaMA 3.3 Turbo (via OpenRouter API)
 - **External Knowledge**: Google Gemini API
-- **Memory**: Per-user isolated conversation state
+- **Memory**: Redis (self-hosted) for conversation history
+- **Web Server**: Nginx for SSE streaming support
 
 ## Project Structure
 
@@ -130,9 +131,73 @@ indexer.add_documents(chunks, embeddings)
 
 ### 5. Run the Chatbot
 
+#### Local Development
+
 ```bash
-python main.py
+python chatbot_service_sse.py
 ```
+
+#### Docker Deployment (Production)
+
+For production deployment on EC2 with all services (Chatbot, Qdrant, Redis):
+
+```bash
+# 1. Create .env file from template
+cp env_template.txt .env
+
+# 2. Edit .env and add your API keys
+# OPENROUTER_API_KEY=your_key_here
+# GEMINI_API_KEY=your_key_here
+
+# 3. Build and start all services
+docker compose up -d
+
+# 4. Check service health
+docker compose ps
+curl http://localhost/health
+
+# 5. View logs
+docker compose logs -f
+```
+
+**Services:**
+- Chatbot Service: `http://localhost` (Port 80 via Nginx)
+- Qdrant Dashboard: `http://localhost:6333/dashboard`
+- Redis: `localhost:6379`
+
+**Management Commands:**
+```bash
+# Stop services
+docker compose down
+
+# Restart services
+docker compose restart
+
+# View specific service logs
+docker compose logs -f chatbot
+docker compose logs -f qdrant
+docker compose logs -f redis
+
+# Debug container issues
+bash debug-container.sh
+```
+
+**EC2 Deployment:**
+
+Use the provided deployment script:
+
+```bash
+# On EC2 instance
+bash deploy.sh
+```
+
+This will:
+1. Pull latest code from GitHub
+2. Build Docker images locally
+3. Start all services with docker-compose
+4. Run health checks
+
+See the deployment script for configuration options.
 
 ## Usage
 

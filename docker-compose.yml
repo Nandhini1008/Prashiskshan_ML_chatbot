@@ -2,7 +2,7 @@ version: "3.9"
 
 # Production Docker Compose for EC2 Deployment
 # - Self-hosted Qdrant for vector storage
-# - External Redis (backend Redis) for conversation storage
+# - Self-hosted Redis for conversation storage
 # - Nginx for SSE streaming support
 
 services:
@@ -22,10 +22,10 @@ services:
       - PYTHONUNBUFFERED=1
       # Qdrant configuration (self-hosted)
       - QDRANT_URL=http://qdrant:6333
-      # Redis configuration (external backend Redis)
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      # Redis configuration (self-hosted)
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
     volumes:
       # Mount data directory for persistence
       - ./data:/app/data
@@ -33,7 +33,9 @@ services:
       - ./logs:/app/logs
     depends_on:
       qdrant:
-        condition: service_started
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
@@ -41,6 +43,25 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    networks:
+      - chatbot-network
+
+  # Redis for conversation storage
+  redis:
+    image: redis:7-alpine
+    container_name: chatbot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     networks:
       - chatbot-network
 
@@ -72,4 +93,6 @@ networks:
 
 volumes:
   qdrant_storage:
+    driver: local
+  redis_data:
     driver: local

@@ -149,11 +149,8 @@ if [ ! -f ".env" ]; then
         print_warn "Please update .env file with your configuration before continuing."
         print_info "Required configuration:"
         print_info "  - API Keys (OPENROUTER_API_KEY, GEMINI_API_KEY)"
-        print_info "  - REDIS_HOST: Your backend Redis host/IP"
-        print_info "  - REDIS_PORT: Backend Redis port (default: 6379)"
-        print_info "  - REDIS_PASSWORD: Backend Redis password (if set)"
         print_info ""
-        print_info "Note: Qdrant is self-hosted and will be configured automatically."
+        print_info "Note: Qdrant and Redis are self-hosted and will be configured automatically."
         read -p "Press Enter after updating .env file..."
     else
         print_error ".env file not found and no template available."
@@ -161,12 +158,6 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
-# Validate Redis configuration
-if grep -q "REDIS_HOST=your-backend-redis-host-or-ip" .env 2>/dev/null; then
-    print_error "REDIS_HOST not configured in .env file!"
-    print_error "Please set REDIS_HOST to your backend Redis host/IP address."
-    exit 1
-fi
 
 # Validate API keys
 if grep -q "your_openrouter_api_key_here" .env 2>/dev/null || grep -q "your_gemini_api_key_here" .env 2>/dev/null; then
@@ -221,12 +212,13 @@ echo ""
 echo "Services Running:"
 echo "  - Chatbot Service (Nginx): Port 80"
 echo "  - Qdrant (Vector DB): Port 6333"
-echo "  - Redis: External (Backend)"
+echo "  - Redis (Conversation Storage): Port 6379"
 echo ""
 echo "Useful commands:"
 echo "  View logs:        $DOCKER_COMPOSE_CMD logs -f"
 echo "  View chatbot logs: $DOCKER_COMPOSE_CMD logs -f chatbot"
 echo "  View Qdrant logs:  $DOCKER_COMPOSE_CMD logs -f qdrant"
+echo "  View Redis logs:   $DOCKER_COMPOSE_CMD logs -f redis"
 echo "  Stop service:     $DOCKER_COMPOSE_CMD down"
 echo "  Restart:          $DOCKER_COMPOSE_CMD restart"
 echo "  Status:           $DOCKER_COMPOSE_CMD ps"

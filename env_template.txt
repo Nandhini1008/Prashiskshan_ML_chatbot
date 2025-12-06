@@ -12,12 +12,11 @@ GEMINI_API_KEY=your_gemini_api_key_here
 QDRANT_URL=http://qdrant:6333
 QDRANT_API_KEY=
 
-# Redis Configuration (External Backend Redis)
-# Connect to your backend Redis service
-# Update these with your backend Redis connection details
-REDIS_HOST=your-backend-redis-host-or-ip
+# Redis Configuration (Self-hosted on EC2)
+# Redis runs in docker-compose, accessible via service name
+REDIS_HOST=redis
 REDIS_PORT=6379
-REDIS_PASSWORD=your-redis-password-if-set
+REDIS_PASSWORD=
 
 # Service Configuration
 CHATBOT_SERVICE_PORT=5001
