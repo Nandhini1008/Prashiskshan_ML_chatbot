@@ -107,7 +107,11 @@ services:
     healthcheck:
       # Qdrant responds on root endpoint (even 404 means server is up)
       # wget --spider checks connectivity without downloading
-      test: ["CMD-SHELL", "wget --spider --quiet --tries=1 --timeout=3 http://localhost:6333/ 2>&1 || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --spider --quiet --tries=1 --timeout=3 http://localhost:6333/ 2>&1 || exit 1",
+        ]
       interval: 15s
       timeout: 8s
       retries: 6
