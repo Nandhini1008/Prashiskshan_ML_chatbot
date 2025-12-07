@@ -91,7 +91,7 @@ services:
       # gRPC port removed - not needed for HTTP-only access
     volumes:
       # Host bind mount for persistence (survives container removal)
-      - /data/qdrant:/qdrant/storage
+      - /mnt/docker/qdrant:/qdrant/storage
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
       - QDRANT__SERVICE__HTTP_PORT=6333
@@ -99,13 +99,19 @@ services:
       - QDRANT__STORAGE__OPTIMIZER__DELETED_THRESHOLD=0.2
       - QDRANT__STORAGE__OPTIMIZER__VACUUM_MIN_VECTOR_NUMBER=1000
     restart: unless-stopped
+    mem_limit: 1g
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     healthcheck:
-      # Relaxed timings for cold startup on slow disks
-      test: ["CMD-SHELL", "curl -f http://localhost:6333/health || exit 1"]
+      # Qdrant responds on root endpoint (even 404 means server is up)
+      # wget --spider checks connectivity without downloading
+      test: ["CMD-SHELL", "wget --spider --quiet --tries=1 --timeout=3 http://localhost:6333/ 2>&1 || exit 1"]
       interval: 15s
       timeout: 8s
       retries: 6
-      start_period: 90s
+      start_period: 120s
     networks:
       - chatbot-network
     # Resource limits for low-spec EC2
