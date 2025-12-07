@@ -79,11 +79,11 @@ services:
       - QDRANT__SERVICE__HTTP_PORT=6333
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/"]
+      test: ["CMD-SHELL", "curl -f http://localhost:6333/health || exit 1"]
       interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     networks:
       - chatbot-network
 
