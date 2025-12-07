@@ -62,7 +62,9 @@ COLLEGE_DOCS_DIR = os.path.join(DATA_DIR, "college_docs")
 FALLBACK_RESPONSE = "Based on generally available information about internships and education programs, I can provide some guidance. However, specific details for this query are not in my current database. Please feel free to ask about general aspects or other companies/programs."
 
 # Session Configuration
-MAX_CONVERSATION_HISTORY = 10
+# Read from environment variable, default to 10 if not set
+# Set to 0 or negative to disable history limit (unlimited)
+MAX_CONVERSATION_HISTORY = int(os.getenv("MAX_CONVERSATION_HISTORY", "10"))
 
 def get_config() -> Dict[str, Any]:
     """

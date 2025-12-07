@@ -22,5 +22,11 @@ REDIS_PASSWORD=
 CHATBOT_SERVICE_PORT=5001
 CHATBOT_SERVICE_HOST=0.0.0.0
 
+# Conversation History Configuration
+# Set to number of exchanges (user+assistant pairs) to keep
+# Set to 0 or negative to disable history limit (unlimited)
+# Default: 10 (keeps last 10 exchanges = 20 messages)
+MAX_CONVERSATION_HISTORY=0
+
 # Backend API Configuration (if needed)
 # BACKEND_API_URL=http://your-backend-api-url:port

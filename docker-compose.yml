@@ -12,8 +12,8 @@ services:
       dockerfile: Dockerfile
     container_name: chatbot-service
     ports:
-      - "80:80"      # Nginx port (external access)
-      - "5001:5001"  # Direct Flask access (optional, for debugging)
+      - "80:80" # Nginx port (external access)
+      - "5001:5001" # Direct Flask access (optional, for debugging)
     env_file:
       - .env
     environment:
@@ -54,10 +54,10 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -70,8 +70,8 @@ services:
     image: qdrant/qdrant:latest
     container_name: chatbot-qdrant
     ports:
-      - "6333:6333"  # HTTP API
-      - "6334:6334"  # gRPC API
+      - "6333:6333" # HTTP API
+      - "6334:6334" # gRPC API
     volumes:
       - qdrant_storage:/qdrant/storage
     environment:

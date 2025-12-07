@@ -166,6 +166,8 @@ def generate_sse_response(query_text, user_id, session_id):
 @app.route('/health', methods=['GET'])
 def health():
     redis_connected = False
+    qdrant_connected = False
+    
     if chatbot is not None:
         try:
             # Check Redis connection
@@ -175,12 +177,26 @@ def health():
         except Exception as e:
             print(f"Redis health check failed: {e}", file=sys.stderr)
             redis_connected = False
+        
+        try:
+            # Check Qdrant connection
+            import requests
+            qdrant_url = chatbot.config.get("qdrant_url", "http://qdrant:6333")
+            response = requests.get(f"{qdrant_url}/health", timeout=2)
+            if response.status_code == 200:
+                qdrant_connected = True
+        except Exception as e:
+            print(f"Qdrant health check failed: {e}", file=sys.stderr)
+            qdrant_connected = False
+    
+    status = "ok" if (chatbot is not None and redis_connected) else "degraded"
     
     return jsonify({
-        "status": "ok",
+        "status": status,
         "chatbot_initialized": chatbot is not None,
         "pipeline_warmed": is_warmed_up,
-        "redis_connected": redis_connected
+        "redis_connected": redis_connected,
+        "qdrant_connected": qdrant_connected
     })
 
 @app.route('/query', methods=['POST'])

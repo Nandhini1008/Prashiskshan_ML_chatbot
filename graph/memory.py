@@ -7,6 +7,7 @@ Uses redis_key = "chatbot:{user_id}:{session_id}" for complete isolation.
 import os
 import json
 import redis
+import time
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
@@ -14,15 +15,18 @@ class ConversationMemory:
     """Manages conversation history for multiple users using Redis."""
     
     def __init__(self, max_history: int = 10, redis_host: Optional[str] = None, 
-                 redis_port: Optional[int] = None, redis_password: Optional[str] = None):
+                 redis_port: Optional[int] = None, redis_password: Optional[str] = None,
+                 max_retries: int = 5, retry_delay: int = 2):
         """
         Initialize conversation memory with Redis backend.
         
         Args:
-            max_history: Maximum number of conversation turns to keep
+            max_history: Maximum number of conversation turns to keep (0 = unlimited)
             redis_host: Redis host (defaults to env or localhost)
             redis_port: Redis port (defaults to env or 6379)
             redis_password: Redis password (optional)
+            max_retries: Maximum number of connection retry attempts
+            retry_delay: Delay between retries in seconds
         """
         self.max_history = max_history
         
@@ -31,21 +35,32 @@ class ConversationMemory:
         redis_port = redis_port or int(os.getenv("REDIS_PORT", "6379"))
         redis_password = redis_password or os.getenv("REDIS_PASSWORD", None)
         
-        try:
-            self.redis_client = redis.Redis(
-                host=redis_host,
-                port=redis_port,
-                password=redis_password,
-                decode_responses=True,
-                socket_connect_timeout=5,
-                socket_timeout=5
-            )
-            # Test connection
-            self.redis_client.ping()
-        except Exception as e:
-            print(f"Warning: Redis connection failed: {e}. Falling back to in-memory storage.")
-            self.redis_client = None
-            self._fallback_storage: Dict[str, List[Dict[str, str]]] = {}
+        # Try to connect with retries
+        self.redis_client = None
+        for attempt in range(max_retries):
+            try:
+                self.redis_client = redis.Redis(
+                    host=redis_host,
+                    port=redis_port,
+                    password=redis_password if redis_password else None,
+                    decode_responses=True,
+                    socket_connect_timeout=10,
+                    socket_timeout=10,
+                    retry_on_timeout=True,
+                    health_check_interval=30
+                )
+                # Test connection
+                self.redis_client.ping()
+                print(f"✓ Redis connected successfully to {redis_host}:{redis_port}")
+                break
+            except (redis.ConnectionError, redis.TimeoutError, Exception) as e:
+                if attempt < max_retries - 1:
+                    print(f"⚠ Redis connection attempt {attempt + 1}/{max_retries} failed: {e}. Retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                else:
+                    print(f"✗ Redis connection failed after {max_retries} attempts: {e}. Falling back to in-memory storage.")
+                    self.redis_client = None
+                    self._fallback_storage: Dict[str, List[Dict[str, str]]] = {}
     
     def _get_redis_key(self, user_id: str, session_id: str) -> str:
         """
@@ -79,6 +94,9 @@ class ConversationMemory:
             if data:
                 return json.loads(data)
             return []
+        except (redis.ConnectionError, redis.TimeoutError) as e:
+            print(f"⚠ Redis connection error while loading state: {e}. Using fallback storage.")
+            return self._fallback_storage.get(redis_key, [])
         except Exception as e:
             print(f"Error loading state from Redis: {e}")
             return []
@@ -100,6 +118,9 @@ class ConversationMemory:
         try:
             data = json.dumps(messages)
             self.redis_client.setex(redis_key, ttl, data)
+        except (redis.ConnectionError, redis.TimeoutError) as e:
+            print(f"⚠ Redis connection error while saving state: {e}. Using fallback storage.")
+            self._fallback_storage[redis_key] = messages
         except Exception as e:
             print(f"Error saving state to Redis: {e}")
     
@@ -124,10 +145,12 @@ class ConversationMemory:
         
         messages.append(message)
         
-        # Trim history if it exceeds max_history
-        if len(messages) > self.max_history * 2:
+        # Trim history if max_history is set and exceeded
+        # max_history of 0 or negative means unlimited
+        if self.max_history > 0 and len(messages) > self.max_history * 2:
             # Keep only the last max_history exchanges (user + assistant pairs)
             messages = messages[-(self.max_history * 2):]
+            print(f"Trimmed conversation history to last {self.max_history} exchanges ({len(messages)} messages)")
         
         self._save_state(redis_key, messages)
     
@@ -191,6 +214,10 @@ class ConversationMemory:
         
         try:
             self.redis_client.delete(redis_key)
+        except (redis.ConnectionError, redis.TimeoutError) as e:
+            print(f"⚠ Redis connection error while clearing session: {e}. Using fallback storage.")
+            if redis_key in self._fallback_storage:
+                del self._fallback_storage[redis_key]
         except Exception as e:
             print(f"Error clearing session from Redis: {e}")
     
