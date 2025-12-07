@@ -50,3 +50,4 @@ docker exec chatbot-service env | grep -E "(REDIS|QDRANT|CHATBOT)" 2>&1 || echo 
 echo ""
 echo "=========================================="
 
+
