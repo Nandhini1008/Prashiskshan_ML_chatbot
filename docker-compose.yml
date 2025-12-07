@@ -1,9 +1,9 @@
-version: "3.9"
-
 # Production Docker Compose for EC2 Deployment
+# Optimized for low-resource EC2 instances with persistent host bind mounts
 # - Self-hosted Qdrant for vector storage
-# - Self-hosted Redis for conversation storage
+# - Self-hosted Redis for conversation storage (internal only)
 # - Nginx for SSE streaming support
+# - Chatbot service runs chatbot_service_sse.py via supervisor
 
 services:
   chatbot:
@@ -11,9 +11,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: chatbot-service
+    # Service runs chatbot_service_sse.py (configured in supervisord.conf)
     ports:
-      - "80:80" # Nginx port (external access)
-      - "5001:5001" # Direct Flask access (optional, for debugging)
+      - "80:80"      # Nginx port (external access)
+      - "5001:5001"  # Direct Flask access (optional, for debugging)
     env_file:
       - .env
     environment:
@@ -22,7 +23,7 @@ services:
       - PYTHONUNBUFFERED=1
       # Qdrant configuration (self-hosted)
       - QDRANT_URL=http://qdrant:6333
-      # Redis configuration (self-hosted)
+      # Redis configuration (self-hosted, internal network only)
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=
@@ -38,61 +39,91 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 90s
     networks:
       - chatbot-network
 
   # Redis for conversation storage
+  # SECURITY: No public port exposure - internal network only
   redis:
     image: redis:7-alpine
     container_name: chatbot-redis
-    ports:
-      - "6379:6379"
+    # CRITICAL: No ports exposed - Redis is internal only
+    # Accessible only via Docker network: redis:6379
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+      # Host bind mount for persistence (survives container removal)
+      - /data/redis:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --stop-writes-on-bgsave-error no
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 10s
+      # Increased timings for slow EC2 disks and low RAM
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
     networks:
       - chatbot-network
+    # Resource limits for low-spec EC2
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+        reservations:
+          memory: 128M
 
   # Self-hosted Qdrant for vector storage
   qdrant:
     image: qdrant/qdrant:latest
     container_name: chatbot-qdrant
     ports:
-      - "6333:6333" # HTTP API
-      - "6334:6334" # gRPC API
+      - "6333:6333"  # HTTP API (external access for dashboard)
+      # gRPC port removed - not needed for HTTP-only access
     volumes:
-      - qdrant_storage:/qdrant/storage
+      # Host bind mount for persistence (survives container removal)
+      - /data/qdrant:/qdrant/storage
     environment:
       - QDRANT__SERVICE__GRPC_PORT=6334
       - QDRANT__SERVICE__HTTP_PORT=6333
+      # Optimize for low-resource EC2
+      - QDRANT__STORAGE__OPTIMIZER__DELETED_THRESHOLD=0.2
+      - QDRANT__STORAGE__OPTIMIZER__VACUUM_MIN_VECTOR_NUMBER=1000
     restart: unless-stopped
     healthcheck:
+      # Relaxed timings for cold startup on slow disks
       test: ["CMD-SHELL", "curl -f http://localhost:6333/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
+      interval: 15s
+      timeout: 8s
+      retries: 6
+      start_period: 90s
     networks:
       - chatbot-network
+    # Resource limits for low-spec EC2
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
 networks:
   chatbot-network:
     driver: bridge
+    name: chatbot-network
 
-volumes:
-  qdrant_storage:
-    driver: local
-  redis_data:
-    driver: local
+# NOTE: No volumes section - using host bind mounts instead
+# This prevents Docker volume management overhead and disk exhaustion
+# Host directories must be created before first run:
+#   sudo mkdir -p /data/redis /data/qdrant
+#   sudo chown -R 999:999 /data/redis  # Redis user
+#   sudo chown -R 1000:1000 /data/qdrant  # Qdrant user
