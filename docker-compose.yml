@@ -13,8 +13,8 @@ services:
     container_name: chatbot-service
     # Service runs chatbot_service_sse.py (configured in supervisord.conf)
     ports:
-      - "80:80"      # Nginx port (external access)
-      - "5001:5001"  # Direct Flask access (optional, for debugging)
+      - "80:80" # Nginx port (external access)
+      - "5001:5001" # Direct Flask access (optional, for debugging)
     env_file:
       - .env
     environment:
@@ -87,7 +87,7 @@ services:
     image: qdrant/qdrant:latest
     container_name: chatbot-qdrant
     ports:
-      - "6333:6333"  # HTTP API (external access for dashboard)
+      - "6333:6333" # HTTP API (external access for dashboard)
       # gRPC port removed - not needed for HTTP-only access
     volumes:
       # Host bind mount for persistence (survives container removal)
@@ -120,7 +120,6 @@ networks:
   chatbot-network:
     driver: bridge
     name: chatbot-network
-
 # NOTE: No volumes section - using host bind mounts instead
 # This prevents Docker volume management overhead and disk exhaustion
 # Host directories must be created before first run:
